@@ -1,17 +1,20 @@
-# Cookie Auditor
+# The Cookie Auditor
 
-Cookie Auditor is a small Manifest V3 Chromium extension that lists safe metadata
-for cookies matching the page currently open in the active tab.
+A basic Chrome extension that lists cookie names and domains for the current page.
 
-Currently, the goal is just a basic demonstration. It does not assign risk levels, identify trackers, or make reports. Work in progress.
+- **First-party cookies** come from Chrome's Cookies API for the active page.
+- **Confirmed stored third-party cookies** were observed in a third-party `Cookie` or `Set-Cookie` header and currently have a matching cookie in the browser's cookie store.
+- **Unconfirmed third-party cookies** were observed in one of those headers but have no current cookie-store match. They may have been blocked, expired, deleted, or rejected.
 
-## Install locally in Chrome
+The extension does not decide whether a cookie is used for tracking. Cookie values are not displayed or stored.
+
+## Install
 
 1. Open `chrome://extensions`.
 2. Enable **Developer mode**.
 3. Select **Load unpacked**.
 4. Choose the `The-Cookie-Auditor` folder.
-5. Open a normal `http` or `https` webpage and select the Cookie Auditor icon.
+5. Open a normal HTTP or HTTPS page and reload it.
+6. Select the extension icon to view the cookie lists.
 
-The popup reports an unsupported-page message for browser pages, new tabs,
-extension pages, and other non-web URLs. Reopen the popup to run a fresh scan.
+Reload the extension from `chrome://extensions` after changing its files.
