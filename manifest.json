@@ -1,6 +1,22 @@
 {
   "manifest_version": 3,
-  "name": "Cookie Auditor",
-  "version": "0.0.1",
-  "description": "Lists safe cookie metadata for the current webpage."
+  "name": "The Cookie Auditor",
+  "version": "0.1.0",
+  "description": "Lists first-party and third-party cookies found on the current page.",
+  "permissions": [
+    "cookies",
+    "storage",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "The Cookie Auditor",
+    "default_popup": "popup.html"
+  }
 }
