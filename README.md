@@ -20,5 +20,5 @@ The extension does not decide whether a cookie is used for tracking. Cookie valu
 Reload the extension from your Chromium-based browser's extension settings after changing its files.
 
 ## Current Known Issues
-- Clicking the extention to perform the scan before the website fully loads results in not all cookies appearing in the results.
+- Clicking on the extension to perform the scan can be done before the website fully loads. Not all cookies may be initialized while the website is loading, resulting in cookies being missed in the scan.
   - Potential solution: Try to implement a system that lets the extension wait for the website to fully load before performing the scan.
