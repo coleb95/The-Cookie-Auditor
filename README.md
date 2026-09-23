@@ -3,7 +3,7 @@
 Cookie Auditor is a small Manifest V3 Chromium extension that lists safe metadata
 for cookies matching the page currently open in the active tab.
 
-Currently, this is just a basic demonstration. It does not assign risk levels, identify trackers, or make reports. Work in progress.
+Currently, the goal is just a basic demonstration. It does not assign risk levels, identify trackers, or make reports. Work in progress.
 
 ## Install locally in Chrome
 
