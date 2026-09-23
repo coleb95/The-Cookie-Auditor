@@ -1,0 +1,96 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  background: #ffb17f;
+  color: #743512;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 400px;
+  max-height: 600px;
+  margin: 0;
+  overflow-y: auto;
+}
+
+main {
+  padding: 18px;
+}
+
+.hero {
+  padding-bottom: 14px;
+  border-bottom: 1px solid #93430f;
+}
+
+h1,
+h2 {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 5px;
+  font-size: 1.3rem;
+}
+
+h2 {
+  margin-bottom: 8px;
+  font-size: 1rem;
+}
+
+.current-site {
+  margin: 0;
+  color: #7f3d1b;
+  font-family: monospace;
+  overflow-wrap: anywhere;
+}
+
+section {
+  margin-top: 20px;
+}
+
+.cookie-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cookie-item,
+.empty-state {
+  padding: 9px 10px;
+  border: 1px solid #93430f;
+  border-radius: 6px;
+  background: #ffc49f;
+  font-family: monospace;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.empty-state {
+  color: #7f3d1b;
+}
+
+.notice {
+  margin-top: 16px;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.warning {
+  background: #ffc400;
+  color: #6b2f0d;
+}
+
+.error {
+  background: #d86a48;
+  color: #fff1e5;
+}
+
+.is-hidden {
+  display: none;
+}
