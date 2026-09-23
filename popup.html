@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cookie Auditor</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <header class="hero">
+        <h1>The Cookie Auditor</h1>
+        <p id="current-site" class="current-site">Checking the active tab…</p>
+      </header>
+
+      <div id="unsupported" class="notice warning is-hidden" role="status">
+        Open an HTTP or HTTPS page to list its cookies.
+      </div>
+      <div id="error" class="notice error is-hidden" role="alert"></div>
+
+      <div id="results" class="is-hidden">
+        <section aria-labelledby="first-party-title">
+          <h2 id="first-party-title">First-party cookies</h2>
+          <ul id="first-party-list" class="cookie-list"></ul>
+        </section>
+
+        <section aria-labelledby="stored-third-party-title">
+          <h2 id="stored-third-party-title">Confirmed stored third-party cookies</h2>
+          <ul id="stored-third-party-list" class="cookie-list"></ul>
+        </section>
+
+        <section aria-labelledby="unconfirmed-third-party-title">
+          <h2 id="unconfirmed-third-party-title">Unconfirmed third-party cookies</h2>
+          <ul id="unconfirmed-third-party-list" class="cookie-list"></ul>
+        </section>
+      </div>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
