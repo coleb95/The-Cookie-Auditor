@@ -8,9 +8,14 @@ const elements = {
   error: document.querySelector("#error"),
   firstPartyList: document.querySelector("#first-party-list"),
   storedThirdPartyList: document.querySelector("#stored-third-party-list"),
-  unconfirmedThirdPartyList: document.querySelector("#unconfirmed-third-party-list")
+  unconfirmedThirdPartyList: document.querySelector("#unconfirmed-third-party-list"),
+  // For Level and Threat Identifacation
+  collectedInformationList: document.querySelector("#collected-information-list"),
+  informationStatus: document.quarySelector("#information-status")
 };
 
+// remember which browser tab the popup is inspecting
+let inspectedTabId = null;
 // Convert a value into a URL only when it is a normal HTTP or HTTPS web address.
 function asWebUrl(value) {
   try {
@@ -50,7 +55,62 @@ function renderCookies(list, cookies, emptyMessage = "No cookies found.") {
       item.textContent = `${cookie.name} (${cookie.domain})`;
       return item;
     })
-  );
+  );  
+}
+
+//Display Potentially Collected Information
+function renderCollectedInformation(result)
+{
+  const list = elements.collectedInformationList;
+  const status = elements.informationStatus;
+
+  //checks if information was detected
+  if (!result || !Array.isArray(result.informationTypes) || result.informationTypes.length === 0)
+  {
+    const item = document.createElement("li");
+    item.className = "empty-slate";
+    item.textContent = "No matching information detected";
+    list.replaceChildren(item);
+    status.textContent = "No recognized information fields observed";
+    return;
+  }
+
+  // Make Internal Name Easier To Understand
+  const informationCategories = 
+  {
+    location: "Location Information",
+    ipAddress: "IP Address Information",
+    personal: "Personal Information",
+    browsing: "Browsing Activity",
+    shopping: "Shopping Information",
+  };
+
+  // List For Each Catigory Above
+  const items = result.informationTypes.map((category)=> 
+  {
+    const item = document.createElement("li");
+    item.className = "cookie-item";
+    item.textContent = informationCategories[category] || category;
+    return item;
+  });
+
+  // Display Categories That Were Detected
+  list.replaceChildren(...items);
+
+  //Display Domain Reciving Information
+  status.textContent = `Latest matching request sent to: ${result.receivingDomain || "Unknown"}`;
+}
+
+//Retrieve Detected Information Stored
+async function getCollectedInformation(tabId)
+{
+  const storeKey = `detection ${tabId}`;
+
+  //Retrieve Most Recent Detection
+  const data = await chrome.storage.session.get(storeageKey);
+
+  const result = data[storageKey];
+  renderCollectedInformation(result);
 }
 
 // Show the message used for browser pages that extensions cannot inspect.
@@ -148,6 +208,22 @@ async function inspectActiveTab() {
   }
 
   elements.site.textContent = pageUrl.hostname;
+
+  //Remember Active Tab
+  inspectedTabId = tab.id;
+
+  //Retrieve Potentially Collected Information
+  try
+  {
+    await getCollectedInformation(tab.id);
+
+  }
+  catch (error)
+  {
+    console.error("Information Detection Error:", error);
+    elements.informationStatus.textContent = "unable to retrieve information detection results.";
+  }
+
   const firstPartyCookies = await getFirstPartyCookies(tab.id, pageUrl);
   renderCookies(elements.firstPartyList, firstPartyCookies);
   elements.results.classList.remove("is-hidden");
@@ -178,3 +254,30 @@ async function inspectActiveTab() {
 
 // Begin the inspection when the popup opens, and show an error if it fails.
 inspectActiveTab().catch(showError);
+
+//Update Detected Information When Background.js Saves New Results
+chrome.storage.onChanged.addListener((changes, areaName) =>
+{
+  //Monitors Session Stage Only
+  if (areaName !== "session")
+  {
+    return;
+  }
+
+  //Ensure A Browser Tabs Being Inspected
+  if (inspectedTabId === null)
+  {
+    return;
+  }
+  const storageKey = `detection_${inspectedTabId}`
+
+  //Checks For New Information Save For This Tab
+  const change = changes[storeageKey];
+  if (!change)
+  {
+    return;
+  }
+
+  //Refreshes Display
+  renderCollectedInformation(change.newValue);
+})

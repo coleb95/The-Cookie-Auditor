@@ -87,6 +87,122 @@ async function recordThirdPartyCookies(details, names) {
     return;
   }
 
+// Identify Personal Information Being Requested
+function identifyCollectedInformation(fieldname)
+{
+  const categories =
+  {
+    // Location Based Information Requested
+    location: 
+    [
+      "gps",
+      "location",
+      "latitude",
+      "longitude",
+      "lat",
+      "lng",
+      "lon",
+    ],
+
+    // IP Address Information Requested
+    IpAddress:
+    [
+      "ip",
+      "ip_address",
+      "ipaddress",
+      "client_ip",
+      "user_ip",
+      "remote_addr",
+    ],
+
+    //Personal Information Requested
+    personal: 
+    [
+      "email",
+      "phone",
+      "firstname",
+      "lastname",
+      //"password", //expereincing false positives not sure why
+      //"username", //expereincing false positives not sure why
+    ],
+
+    //Browser History Request
+    browsing:
+    [
+      "page_url",
+      "referrer",
+      "history",
+      "search",
+      "event",
+    ],
+
+    // Shopping Information Request
+    shopping:
+    [
+      "produce_id",
+      "cart",
+      "purchase",
+    ],
+  }
+  const detected = [];
+  for (const [categor, keywords] of Object.entries(categories))
+  {
+    if (keywords.includes(fieldname.toLowerCase()))
+    {
+      detected.push(category);
+    }
+  }
+  return detected;
+}
+
+// Information Website Is Sending
+crome.webRequest.onBeforeRequest.addListener
+(
+  function(details)
+  {
+    const url = new URL(details.url);
+
+    // Says What Information In URL Parameters
+    const fields = [...url.searchParams.keys()];
+
+    // Says What Information is In Supported Form Submissions
+    if (details.requestBody?.FormData)
+    {
+      fields.push(...Object.keys(details.requestBody.FormData));
+    }
+
+    const detectedInformation = new Set();
+
+    for (const feild of fields)
+    {
+      const categories = identifyCollectedInformation(field);
+      categories.forEach(category => {detectedInformation.add(category);});
+    }
+    if (detectedInformation.size > 0)
+    {
+      console.log("Website:", details.intiator);
+      console.log("Receiving Domain:", url.hostname);
+      console.log("Potential Information Types:", [...DetectedInformation]);
+      console.log("Request ID:", details.requestId);
+
+      //Save Detected Information For Popup
+      if (details.tabId >= 0)
+      {
+        const storeageKey = `detection_${details.tabId}`;
+        const result = {
+          website: details.initiator || "Unknown",
+          receivingDomain: url.hostname,
+          informationTypes: [...detectedInformation],
+          requestId: details.requestId
+        };
+        chrome.storage.session.set({[storageKey]: result}).catch(console.error);
+      }
+    }
+  },
+  { urls: ["<all_urls>"]},
+  ["requestBody"]
+);
+
   const key = storageKey(details.tabId);
   const stored = await chrome.storage.session.get(key);
   const state = stored[key];
