@@ -87,6 +87,26 @@ async function recordThirdPartyCookies(details, names) {
     return;
   }
 
+  const key = storageKey(details.tabId);
+  const stored = await chrome.storage.session.get(key);
+  const state = stored[key];
+  if (!state || siteDomain(requestUrl.hostname) === state.topLevelDomain) {
+    return;
+  }
+
+  const cookies = new Map(
+    (state.cookies || []).map((cookie) => [`${cookie.domain}\0${cookie.name}`, cookie])
+  );
+  for (const name of names) {
+    cookies.set(`${requestUrl.hostname}\0${name}`, {
+      name,
+      domain: requestUrl.hostname
+    });
+  }
+
+  state.cookies = [...cookies.values()];
+  await chrome.storage.session.set({ [key]: state });
+}
 // Identify Personal Information Being Requested
 function identifyCollectedInformation(fieldname)
 {
@@ -154,9 +174,8 @@ function identifyCollectedInformation(fieldname)
   }
   return detected;
 }
-
 // Information Website Is Sending
-crome.webRequest.onBeforeRequest.addListener
+chrome.webRequest.onBeforeRequest.addListener
 (
   function(details)
   {
@@ -202,28 +221,6 @@ crome.webRequest.onBeforeRequest.addListener
   { urls: ["<all_urls>"]},
   ["requestBody"]
 );
-
-  const key = storageKey(details.tabId);
-  const stored = await chrome.storage.session.get(key);
-  const state = stored[key];
-  if (!state || siteDomain(requestUrl.hostname) === state.topLevelDomain) {
-    return;
-  }
-
-  const cookies = new Map(
-    (state.cookies || []).map((cookie) => [`${cookie.domain}\0${cookie.name}`, cookie])
-  );
-  for (const name of names) {
-    cookies.set(`${requestUrl.hostname}\0${name}`, {
-      name,
-      domain: requestUrl.hostname
-    });
-  }
-
-  state.cookies = [...cookies.values()];
-  await chrome.storage.session.set({ [key]: state });
-}
-
 // Reset tracking when the main page in a tab starts loading.
 chrome.webRequest.onBeforeRequest.addListener((details) => {
   if (details.tabId >= 0 && details.type === "main_frame") {

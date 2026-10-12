@@ -11,7 +11,7 @@ const elements = {
   unconfirmedThirdPartyList: document.querySelector("#unconfirmed-third-party-list"),
   // For Level and Threat Identifacation
   collectedInformationList: document.querySelector("#collected-information-list"),
-  informationStatus: document.quarySelector("#information-status")
+  informationStatus: document.querySelector("#information-status")
 };
 
 // remember which browser tab the popup is inspecting
@@ -104,10 +104,10 @@ function renderCollectedInformation(result)
 //Retrieve Detected Information Stored
 async function getCollectedInformation(tabId)
 {
-  const storeKey = `detection ${tabId}`;
+  const storageKey = `detection_${tabId}`;
 
   //Retrieve Most Recent Detection
-  const data = await chrome.storage.session.get(storeageKey);
+  const data = await chrome.storage.session.get(storageKey);
 
   const result = data[storageKey];
   renderCollectedInformation(result);
@@ -272,7 +272,7 @@ chrome.storage.onChanged.addListener((changes, areaName) =>
   const storageKey = `detection_${inspectedTabId}`
 
   //Checks For New Information Save For This Tab
-  const change = changes[storeageKey];
+  const change = changes[storageKey];
   if (!change)
   {
     return;
