@@ -125,7 +125,7 @@ function identifyCollectedInformation(fieldname)
     ],
 
     // IP Address Information Requested
-    IpAddress:
+    ipAddress:
     [
       "ip",
       "ip_address",
@@ -165,7 +165,7 @@ function identifyCollectedInformation(fieldname)
     ],
   }
   const detected = [];
-  for (const [categor, keywords] of Object.entries(categories))
+  for (const [category, keywords] of Object.entries(categories))
   {
     if (keywords.includes(fieldname.toLowerCase()))
     {
@@ -185,36 +185,36 @@ chrome.webRequest.onBeforeRequest.addListener
     const fields = [...url.searchParams.keys()];
 
     // Says What Information is In Supported Form Submissions
-    if (details.requestBody?.FormData)
+    if (details.requestBody?.formData)
     {
-      fields.push(...Object.keys(details.requestBody.FormData));
+      fields.push(...Object.keys(details.requestBody.formData));
     }
 
     const detectedInformation = new Set();
 
-    for (const feild of fields)
+    for (const field of fields)
     {
       const categories = identifyCollectedInformation(field);
       categories.forEach(category => {detectedInformation.add(category);});
     }
     if (detectedInformation.size > 0)
     {
-      console.log("Website:", details.intiator);
+      console.log("Website:", details.initiator);
       console.log("Receiving Domain:", url.hostname);
-      console.log("Potential Information Types:", [...DetectedInformation]);
+      console.log("Potential Information Types:", [...detectedInformation]);
       console.log("Request ID:", details.requestId);
 
       //Save Detected Information For Popup
       if (details.tabId >= 0)
       {
-        const storeageKey = `detection_${details.tabId}`;
+        const detectionKey = `detection_${details.tabId}`;
         const result = {
           website: details.initiator || "Unknown",
           receivingDomain: url.hostname,
           informationTypes: [...detectedInformation],
           requestId: details.requestId
         };
-        chrome.storage.session.set({[storageKey]: result}).catch(console.error);
+        chrome.storage.session.set({[detectionKey]: result}).catch(console.error);
       }
     }
   },
