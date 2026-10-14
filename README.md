@@ -1,6 +1,6 @@
 # The Cookie Auditor
 
-A basic Chromeium-based extension that lists cookie names and domains for the current page.
+A basic Chromeium-based extension that lists cookie names and domains for the current page, with foundational work on cookie classification.
 
 - **First-party cookies** come from Chrome's Cookies API for the active page.
 - **Confirmed stored third-party cookies** were observed in a third-party `Cookie` or `Set-Cookie` header and currently have a matching cookie in the browser's cookie store.
@@ -16,9 +16,3 @@ The extension does not decide whether a cookie is used for tracking. Cookie valu
 4. Choose the `The-Cookie-Auditor` folder.
 5. Open a normal HTTP or HTTPS page and reload it.
 6. Select the extension icon to view the cookie lists.
-
-Reload the extension from your Chromium-based browser's extension settings after changing its files.
-
-## Current Known Issues
-- Clicking on the extension to perform the scan can be done before the website fully loads. Not all cookies may be initialized while the website is loading, resulting in cookies being missed in the scan.
-  - Potential solution: Try to implement a system that lets the extension wait for the website to fully load before performing the scan.
