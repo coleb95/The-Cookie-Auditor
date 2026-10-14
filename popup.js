@@ -6,6 +6,7 @@ const elements = {
   results: document.querySelector("#results"),
   unsupported: document.querySelector("#unsupported"),
   error: document.querySelector("#error"),
+  loading: document.querySelector("#loading"),
   firstPartyList: document.querySelector("#first-party-list"),
   storedThirdPartyList: document.querySelector("#stored-third-party-list"),
   unconfirmedThirdPartyList: document.querySelector("#unconfirmed-third-party-list"),
@@ -16,6 +17,12 @@ const elements = {
 
 // remember which browser tab the popup is inspecting
 let inspectedTabId = null;
+const REFRESH_DELAY_MS = 150;
+let refreshTimer = null;
+let refreshInProgress = false;
+let refreshPending = false;
+let inspectionVersion = 0;
+let popupClosed = false;
 // Convert a value into a URL only when it is a normal HTTP or HTTPS web address.
 function asWebUrl(value) {
   try {
@@ -109,12 +116,14 @@ async function getCollectedInformation(tabId)
   //Retrieve Most Recent Detection
   const data = await chrome.storage.session.get(storageKey);
 
-  const result = data[storageKey];
-  renderCollectedInformation(result);
+  return data[storageKey];
 }
 
 // Show the message used for browser pages that extensions cannot inspect.
 function showUnsupported() {
+  elements.results.classList.add("is-hidden");
+  elements.loading.classList.add("is-hidden");
+  elements.error.classList.add("is-hidden");
   elements.site.textContent = "Unsupported page";
   elements.unsupported.classList.remove("is-hidden");
 }
@@ -123,6 +132,55 @@ function showUnsupported() {
 function showError() {
   elements.error.textContent = "Cookies could not be read for this page.";
   elements.error.classList.remove("is-hidden");
+}
+
+function showLoading(isLoading) {
+  elements.loading.classList.toggle("is-hidden", !isLoading);
+}
+
+function isCurrentInspection(version) {
+  return !popupClosed && version === inspectionVersion;
+}
+
+// Batch bursts of events and run only one inspection at a time.
+function scheduleRefresh() {
+  if (popupClosed || inspectedTabId === null) {
+    return;
+  }
+
+  inspectionVersion += 1;
+  refreshPending = true;
+  if (refreshTimer !== null || refreshInProgress) {
+    return;
+  }
+
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null;
+    void refreshCookies();
+  }, REFRESH_DELAY_MS);
+}
+
+async function refreshCookies() {
+  if (popupClosed || refreshInProgress) {
+    return;
+  }
+
+  refreshInProgress = true;
+  refreshPending = false;
+  const version = inspectionVersion;
+  try {
+    await inspectTab(version);
+  } catch (error) {
+    if (isCurrentInspection(version)) {
+      console.error("Cookie inspection error:", error);
+      showError();
+    }
+  } finally {
+    refreshInProgress = false;
+    if (refreshPending && !popupClosed) {
+      scheduleRefresh();
+    }
+  }
 }
 
 // Find the browser cookie store that belongs to the active tab.
@@ -198,35 +256,37 @@ async function splitThirdPartyCookies(tabId, observedCookies) {
   };
 }
 
-// Inspect the active tab and fill each cookie section in the popup.
-async function inspectActiveTab() {
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+// Inspect the same tab throughout the popup's lifetime.
+async function inspectTab(version) {
+  const tab = await chrome.tabs.get(inspectedTabId);
+  if (!isCurrentInspection(version)) {
+    return;
+  }
   const pageUrl = asWebUrl(tab?.url);
-  if (!pageUrl || !Number.isInteger(tab.id)) {
+  if (!pageUrl) {
     showUnsupported();
     return;
   }
 
   elements.site.textContent = pageUrl.hostname;
-
-  //Remember Active Tab
-  inspectedTabId = tab.id;
+  elements.unsupported.classList.add("is-hidden");
+  showLoading(tab.status === "loading");
 
   //Retrieve Potentially Collected Information
+  let collectedInformation;
+  let informationError = false;
   try
   {
-    await getCollectedInformation(tab.id);
+    collectedInformation = await getCollectedInformation(tab.id);
 
   }
   catch (error)
   {
     console.error("Information Detection Error:", error);
-    elements.informationStatus.textContent = "unable to retrieve information detection results.";
+    informationError = true;
   }
 
   const firstPartyCookies = await getFirstPartyCookies(tab.id, pageUrl);
-  renderCookies(elements.firstPartyList, firstPartyCookies);
-  elements.results.classList.remove("is-hidden");
 
   const observedThirdPartyCookies = await chrome.runtime
     .sendMessage({
@@ -240,6 +300,17 @@ async function inspectActiveTab() {
     tab.id,
     observedThirdPartyCookies
   );
+  // A navigation or newer cookie event makes this snapshot obsolete.
+  if (!isCurrentInspection(version)) {
+    return;
+  }
+
+  elements.error.classList.add("is-hidden");
+  renderCollectedInformation(collectedInformation);
+  if (informationError) {
+    elements.informationStatus.textContent = "unable to retrieve information detection results.";
+  }
+  renderCookies(elements.firstPartyList, firstPartyCookies);
   renderCookies(
     elements.storedThirdPartyList,
     thirdPartyCookies.stored,
@@ -250,34 +321,56 @@ async function inspectActiveTab() {
     thirdPartyCookies.unconfirmed,
     "No unconfirmed third-party cookies found."
   );
+  elements.results.classList.remove("is-hidden");
 }
 
-// Begin the inspection when the popup opens, and show an error if it fails.
-inspectActiveTab().catch(showError);
-
-//Update Detected Information When Background.js Saves New Results
-chrome.storage.onChanged.addListener((changes, areaName) =>
-{
-  //Monitors Session Stage Only
-  if (areaName !== "session")
-  {
+// Refresh on load completion, redirects, and navigation in the inspected tab.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (tabId !== inspectedTabId || (!changeInfo.status && !changeInfo.url)) {
     return;
   }
 
-  //Ensure A Browser Tabs Being Inspected
-  if (inspectedTabId === null)
-  {
+  showLoading(tab.status === "loading");
+  if (changeInfo.status === "loading" || changeInfo.url) {
+    elements.results.classList.add("is-hidden");
+    elements.error.classList.add("is-hidden");
+  }
+  scheduleRefresh();
+});
+
+// Cookie changes also catch cookies created after load or after user interaction.
+chrome.cookies.onChanged.addListener(scheduleRefresh);
+
+// Background observations include third-party cookies that were never stored.
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "session" || inspectedTabId === null) {
     return;
   }
-  const storageKey = `detection_${inspectedTabId}`
 
-  //Checks For New Information Save For This Tab
-  const change = changes[storageKey];
-  if (!change)
-  {
+  if (changes[`cookie-list-${inspectedTabId}`] || changes[`detection_${inspectedTabId}`]) {
+    scheduleRefresh();
+  }
+});
+
+window.addEventListener("unload", () => {
+  popupClosed = true;
+  inspectionVersion += 1;
+  clearTimeout(refreshTimer);
+});
+
+// Register listeners before reading the tab so changes during startup are covered.
+async function initializePopup() {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (popupClosed) {
+    return;
+  }
+  if (!Number.isInteger(tab?.id)) {
+    showUnsupported();
     return;
   }
 
-  //Refreshes Display
-  renderCollectedInformation(change.newValue);
-})
+  inspectedTabId = tab.id;
+  await refreshCookies();
+}
+
+initializePopup().catch(showError);
