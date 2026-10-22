@@ -283,7 +283,7 @@ chrome.webRequest.onBeforeRequest.addListener
     const allDetectedInformation = new Set([...(previousResult?.informationTypes || []),...detectedInformation]);
 
     //Keep Track Of Cookie Or Receiving Domains
-    const receivingDomains = new Set([(previousResult?.informationTypes || [])]);
+    const receivingDomains = new Set(previousResult?.receivingDomains || []);
     if (detectedInformation.size > 0)
     {
       receivingDomains.add(url.hostname);
