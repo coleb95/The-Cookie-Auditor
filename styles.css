@@ -70,6 +70,16 @@ section {
   overflow-wrap: anywhere;
 }
 
+/*Highlight Cookies With Domains Receiving Sensitive Information*/
+.cookie-item.possible-data-recipient
+{
+  background-color: #ffe0e0;
+  border: 2px solid #c62828;
+  color: #E66100;
+  font-weight: bold;
+}
+
+
 .empty-state {
   color: #7f3d1b;
 }

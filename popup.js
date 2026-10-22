@@ -17,6 +17,7 @@ const elements = {
 
 // remember which browser tab the popup is inspecting
 let inspectedTabId = null;
+let detectedReceivingDomains = new Set();
 const REFRESH_DELAY_MS = 150;
 let refreshTimer = null;
 let refreshInProgress = false;
@@ -30,6 +31,45 @@ function asWebUrl(value) {
     return url.protocol === "http:" || url.protocol === "https:" ? url : null;
   } catch {
     return null;
+  }
+}
+
+//Checking Whether Cookie Domain Matches Domain
+//Receiving Potentially Sensitive Information
+function matchesDetectedReceiver(cookieDomain)
+{
+  if (typeof cookieDomain !== "string")
+  {
+    return false;
+  }
+  const domain = cookieDomain.toLowerCase().replace(/^\./,"");
+  return [...detectedReceivingDomains].some(receivingDomain => 
+  {
+     //Make Sure Receiving Domain Is Valid
+    if (typeof receivingDomain !== "string")
+    {
+      return false;
+    }
+    const receiver = receivingDomain.toLocaleLowerCase().replace(/^\./,"");
+    return receivingDomain == domain || receivingDomain.endsWith(`.${domain}`);
+  });
+}
+
+//Update Highlighting Of Cookies Displayed In Extention
+function updatecCookieHighlights()
+{
+  const cookieItems = document.querySelectorAll(".cookie-item[data-cookie-domain]");
+  for (const item of cookieItems)
+  {
+    const cookieDomain = item.dataset.cookieDomain;
+    if (matchesDetectedReceiver(cookieDomain))
+    {
+      item.classList.add("possible-data-recipient");
+    }
+    else
+    {
+      item.classList.remove("possible-data-recipient");
+    }
   }
 }
 
@@ -60,6 +100,15 @@ function renderCookies(list, cookies, emptyMessage = "No cookies found.") {
       const item = document.createElement("li");
       item.className = "cookie-item";
       item.textContent = `${cookie.name} (${cookie.domain})`;
+
+      //Store What Cookie Should Be Highlighted
+      item.dataset.cookieDomain = cookie.domain;
+
+      //Check If The Cookie Should Be Highlighted *Safe Guard*
+      if (matchesDetectedReceiver(cookie.domain))
+      {
+        item.classList.add("possible-data-recipient")
+      }
       return item;
     })
   );  
@@ -70,6 +119,21 @@ function renderCollectedInformation(result)
 {
   const list = elements.collectedInformationList;
   const status = elements.informationStatus;
+
+  //Retrieve Domains Receiving Recognized Information
+  const domainData = result?.receivingDomains?.length ? result.receivingDomains : result?.receivingDomain || [];
+
+  //Make Sure Domain Data Is An Array
+  const highlightDomains = Array.isArray(domainData) ? domainData : [domainData];
+
+  // Remove Nested Array And Invalid Values
+  const validDomains = highlightDomains.flat(Infinity).filter(domain => typeof domain === "string").map(domain => domain.toLowerCase().replace(/^\./,""));
+
+  //Save Receiving Domains
+  detectedReceivingDomains = new Set(validDomains);
+
+  //Update Highlighting Displayed Cookies
+  updatecCookieHighlights();
 
   //checks if information was detected
   if (!result || !Array.isArray(result.informationTypes) || result.informationTypes.length === 0)
@@ -104,8 +168,9 @@ function renderCollectedInformation(result)
   // Display Categories That Were Detected
   list.replaceChildren(...items);
 
-  //Display Domain Reciving Information
-  status.textContent = `Latest matching request sent to: ${result.receivingDomain || "Unknown"}`;
+  //Display All Domain Reciving Information
+  const domains = result.receivingDomains?.lenth?result.receivingDomains:[result.receivingDomain || "Unknown"];
+  status.textContent = `Receiving Domains: ${domains.join(", ")}`;
 }
 
 //Retrieve Detected Information Stored

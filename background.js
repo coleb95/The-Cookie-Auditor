@@ -142,8 +142,6 @@ function identifyCollectedInformation(fieldname)
       "phone",
       "firstname",
       "lastname",
-      //"password", //expereincing false positives not sure why
-      //"username", //expereincing false positives not sure why
     ],
 
     //Browser History Request
@@ -159,7 +157,7 @@ function identifyCollectedInformation(fieldname)
     // Shopping Information Request
     shopping:
     [
-      "produce_id",
+      "product_id",
       "cart",
       "purchase",
     ],
@@ -175,48 +173,90 @@ function identifyCollectedInformation(fieldname)
   return detected;
 }
 // Information Website Is Sending
-chrome.webRequest.onBeforeRequest.addListener
+chrome.webRequest.onBeforeRequest.addListener 
 (
   function(details)
   {
+    //Identfies Requests Made By Websites
+    if (details.tabId < 0)
+    {
+      return;
+    }
     const url = new URL(details.url);
 
-    // Says What Information In URL Parameters
+    //What Information Is In URL Parameters
     const fields = [...url.searchParams.keys()];
 
-    // Says What Information is In Supported Form Submissions
+    // What Information Is In Supported Form Submissions
     if (details.requestBody?.formData)
     {
       fields.push(...Object.keys(details.requestBody.formData));
     }
-
     const detectedInformation = new Set();
-
     for (const field of fields)
     {
       const categories = identifyCollectedInformation(field);
-      categories.forEach(category => {detectedInformation.add(category);});
+      categories.forEach(category =>
+      {
+        detectedInformation.add(category);
+      });
     }
+
+    //Checks If A New Website Has Been Opened
+    const isNewPage = details.type === "main_frame";
+
+    //Skips Request That Are No Within The Fields We Are Checking
+    if (detectedInformation.size === 0 && !isNewPage)
+    {
+      return;
+    }
+
+    //Save Information For Popup.js
+    //Process Updates To Stop Overwritting Information
+    void queue (details.tabId, async() =>
+  {
+    const detectionKey = `detection_${details.tabId}`;
+
+    //Return Prevoius Detected Requested Information
+    //Restarts When New Website Is Loaded
+    const stored = isNewPage
+    ?{}
+    : await chrome.storage.session.get(detectionKey);
+    const previousResult = stored[detectionKey];
+
+    //Combine Prevoius Detected Request With New Request
+    const allDetectedInformation = new Set([...(previousResult?.informationTypes || []),...detectedInformation]);
+
+    //Keep Track Of Cookie Or Receiving Domains
+    const receivingDomains = new Set([(previousResult?.informationTypes || [])]);
     if (detectedInformation.size > 0)
     {
-      console.log("Website:", details.initiator);
-      console.log("Receiving Domain:", url.hostname);
-      console.log("Potential Information Types:", [...detectedInformation]);
-      console.log("Request ID:", details.requestId);
-
-      //Save Detected Information For Popup
-      if (details.tabId >= 0)
-      {
-        const detectionKey = `detection_${details.tabId}`;
-        const result = {
-          website: details.initiator || "Unknown",
-          receivingDomain: url.hostname,
-          informationTypes: [...detectedInformation],
-          requestId: details.requestId
-        };
-        chrome.storage.session.set({[detectionKey]: result}).catch(console.error);
-      }
+      receivingDomains.add(url.hostname);
     }
+
+    //Clear Previous Results If New Website Has No Matching Fields
+    if (allDetectedInformation.size === 0)
+    {
+      await chrome.storage.session.remove(detectionKey);
+      return;
+    }
+
+    //Save Detected Information
+    const result =
+    {
+      website: previousResult?.website || details.initiator ||  url.origin,
+      receivingDomain: url.hostname,
+      receivingDomains: [...receivingDomains],
+      informationTypes: [...allDetectedInformation],
+      requestId: details.requestId
+    };
+    await chrome.storage.session.set({
+      [detectionKey]: result
+    });
+    console.log("Website:", result.website);
+    console.log("Receiving Domains:", result.receivingDomain);
+    console.log("All Potential Information Types:", result.informationTypes);
+  }).catch(console.error);
   },
   { urls: ["<all_urls>"]},
   ["requestBody"]
@@ -252,9 +292,15 @@ chrome.webRequest.onHeadersReceived.addListener(
   ["responseHeaders", "extraHeaders"]
 );
 
-// Remove saved tracking data after its tab is closed.
+// Remove Saved Tracking Data After Its Tab Is Closed
 chrome.tabs.onRemoved.addListener((tabId) => {
-  void chrome.storage.session.remove(storageKey(tabId));
+  void chrome.tabs.onRemoved.addListener((tabId)=>
+  {
+    void chrome.storage.session.remove([
+      storageKey(tabId),
+      `detection_${tabId}`
+    ]);
+  })
 });
 
 // Return the active tab's recorded third-party cookies when the popup asks for them.
