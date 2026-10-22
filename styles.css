@@ -59,8 +59,7 @@ section {
   list-style: none;
 }
 
-.cookie-item,
-.empty-state {
+.cookie-item {
   padding: 9px 10px;
   border: 1px solid #93430f;
   border-radius: 6px;
@@ -82,6 +81,14 @@ section {
 
 .empty-state {
   color: #7f3d1b;
+}
+
+#information-status {
+  margin: 0;
+}
+
+#collected-information-list:not(:empty) + #information-status {
+  margin-top: 8px;
 }
 
 .notice {
