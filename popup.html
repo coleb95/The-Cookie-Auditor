@@ -8,48 +8,53 @@
   </head>
   <body>
     <main>
+      <!-- Displayed Title & Current Site -->
       <header class="hero">
         <h1>The Cookie Auditor</h1>
         <p id="current-site" class="current-site">Checking the active tab…</p>
       </header>
 
+      <!-- Warnings -->
       <div id="unsupported" class="notice warning is-hidden" role="status">
-        Open an HTTP or HTTPS page to list its cookies.
+        Open a HTTP or HTTPS page to list its cookies.
       </div>
       <div id="error" class="notice error is-hidden" role="alert"></div>
       <!--Added page loading indicator, shown when page is loading-->
       <div id="loading" class="notice warning is-hidden" role="status">
-        Page loading—results may be incomplete. Cookie lists update automatically.
+        Page loading! Results may be incomplete until website fully loads.
       </div>
 
-      <div id="results" class="is-hidden">
-        <section aria-labelledby="first-party-title">
-          <h2 id="first-party-title">First-party cookies</h2>
-          <ul id="first-party-list" class="cookie-list"></ul>
-        </section>
+      <!-- Risk Level Bar -->
+      <section aria-labelledby="risk-bar">
+          <h2 id="risk-bar">Risk Level</h2>
+       </section>
 
-        <section aria-labelledby="stored-third-party-title">
-          <h2 id="stored-third-party-title">Confirmed stored third-party cookies</h2>
-          <ul id="stored-third-party-list" class="cookie-list"></ul>
-        </section>
-
-        <section aria-labelledby="unconfirmed-third-party-title">
-          <h2 id="unconfirmed-third-party-title">Unconfirmed third-party cookies</h2>
-          <ul id="unconfirmed-third-party-list" class="cookie-list"></ul>
-        </section>
-
-        <!-- Code for identify and labeling cookie threat level -->
+      <!-- Code for identify and labeling cookie threat level -->
         <section aria-labelledby="collected-information-title">
           <h2 id="collected-information-title">
             Potentially Collected Information
           </h2>
-          <p>
-            Information types identified from website network requests
-          </p>
           <ul id="collected-information-list" class="cookie-list"></ul>
           <p id="information-status">
-            checking for transmitted information...
+            Checking for transmitted information...
           </p>
+
+      <div id="results" class="is-hidden">
+        <!-- First-party Cookies -->
+        <section aria-labelledby="first-party-title">
+          <h2 id="first-party-title">First-party cookies</h2>
+          <ul id="first-party-list" class="cookie-list"></ul>
+        </section>
+        <!-- Confirmed Third-party Cookies -->
+        <section aria-labelledby="stored-third-party-title">
+          <h2 id="stored-third-party-title">Confirmed third-party cookies</h2>
+          <ul id="stored-third-party-list" class="cookie-list"></ul>
+        </section>
+        <!-- Unconfirmed Third-party Cookies -->
+        <section aria-labelledby="unconfirmed-third-party-title">
+          <h2 id="unconfirmed-third-party-title">Unconfirmed third-party cookies</h2>
+          <ul id="unconfirmed-third-party-list" class="cookie-list"></ul>
+        </section>
 
         </section>
       </div>

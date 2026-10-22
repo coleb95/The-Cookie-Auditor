@@ -138,11 +138,8 @@ function renderCollectedInformation(result)
   //checks if information was detected
   if (!result || !Array.isArray(result.informationTypes) || result.informationTypes.length === 0)
   {
-    const item = document.createElement("li");
-    item.className = "empty-slate";
-    item.textContent = "No matching information detected";
-    list.replaceChildren(item);
-    status.textContent = "No recognized information fields observed";
+    list.replaceChildren();
+    status.textContent = "No known tracking information detected.";
     return;
   }
 
@@ -380,7 +377,7 @@ async function inspectTab(version) {
   renderCookies(
     elements.storedThirdPartyList,
     thirdPartyCookies.stored,
-    "No stored third-party cookies found."
+    "No confirmed third-party cookies found."
   );
   renderCookies(
     elements.unconfirmedThirdPartyList,
