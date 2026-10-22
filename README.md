@@ -8,6 +8,14 @@ A basic Chromeium-based extension that lists cookie names and domains for the cu
 
 The extension does not decide whether a cookie is used for tracking. Cookie values are not displayed or stored.
 
+## Privacy risk estimate
+
+The Risk Level meter scores observed signals from 0 to 100: green/Low (0–29), orange/Moderate (30–59), and red/High (60–100). It refreshes with the existing cookie and information results and shows Unavailable if those results cannot be read. Results during page loading may be incomplete.
+
+Each detected information category contributes once per page: personal +25, location +15, identifiers +15, browsing +10, shopping +10, and IP address +5. Recognized information sent to any third-party domain adds +15 once. Each unique observed third-party cookie hostname adds +2, capped at +10; unconfirmed cookies receive no extra penalty. The total is capped at 100, and the popup lists the contributing signals.
+
+These are heuristic weights, not a probability of harm or proof of tracking. Detection checks field names, not their contents. No cookie security attributes are scored.
+
 ## Install
 
 1. Open your Chromium-based browser's extension settings.

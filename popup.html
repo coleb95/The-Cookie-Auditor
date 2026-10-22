@@ -26,7 +26,13 @@
 
       <!-- Risk Level Bar -->
       <section aria-labelledby="risk-bar">
-          <h2 id="risk-bar">Risk Level</h2>
+          <h2 id="risk-bar">Risk Level (Alpha)</h2>
+          <p id="risk-status" role="status">Checking...</p>
+          <meter id="risk-meter" class="risk-meter is-hidden" min="0" max="100"
+            low="30" high="60" optimum="0" value="0" aria-labelledby="risk-bar risk-status"
+            aria-describedby="risk-note risk-reasons"></meter>
+          <ul id="risk-reasons" class="risk-reasons"></ul>
+          <p id="risk-note" class="risk-note">Estimated privacy risk based on observed signals, not a probability of harm. Field names suggest possible information. Their contents are not verified.</p>
        </section>
 
       <!-- Code for identify and labeling cookie threat level -->
@@ -38,6 +44,7 @@
           <p id="information-status">
             Checking for transmitted information...
           </p>
+        </section>
 
       <div id="results" class="is-hidden">
         <!-- First-party Cookies -->
@@ -56,7 +63,6 @@
           <ul id="unconfirmed-third-party-list" class="cookie-list"></ul>
         </section>
 
-        </section>
       </div>
     </main>
     <script src="popup.js"></script>

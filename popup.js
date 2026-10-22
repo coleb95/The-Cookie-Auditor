@@ -7,6 +7,9 @@ const elements = {
   unsupported: document.querySelector("#unsupported"),
   error: document.querySelector("#error"),
   loading: document.querySelector("#loading"),
+  riskMeter: document.querySelector("#risk-meter"),
+  riskStatus: document.querySelector("#risk-status"),
+  riskReasons: document.querySelector("#risk-reasons"),
   firstPartyList: document.querySelector("#first-party-list"),
   storedThirdPartyList: document.querySelector("#stored-third-party-list"),
   unconfirmedThirdPartyList: document.querySelector("#unconfirmed-third-party-list"),
@@ -31,6 +34,66 @@ function asWebUrl(value) {
     return url.protocol === "http:" || url.protocol === "https:" ? url : null;
   } catch {
     return null;
+  }
+}
+
+// Count each category once, and limit the influence of cookie volume.
+function calculateRisk(result, observedCookies, pageUrl) {
+  const weights = {
+    personal: [25, "Potential personal information"],
+    location: [15, "Potential location information"],
+    identifiers: [15, "Potential user, device, or session identifiers"],
+    browsing: [10, "Potential browsing activity"],
+    shopping: [10, "Potential shopping activity"],
+    ipAddress: [5, "Potential IP address information"]
+  };
+  let score = 0;
+  const reasons = [];
+  for (const category of new Set(result?.informationTypes || [])) {
+    if (!Object.hasOwn(weights, category)) continue;
+    const [points, label] = weights[category];
+    score += points;
+    reasons.push(`${label}: +${points}`);
+  }
+
+  // Use the same site-domain approximation as background.js.
+  const siteDomain = (hostname) => hostname.toLowerCase().replace(/^\.|\.$/g, "").split(".").slice(-2).join(".");
+  const receivers = result?.receivingDomains || (result?.receivingDomain ? [result.receivingDomain] : []);
+  if (score > 0 && receivers.some((domain) =>
+    typeof domain === "string" && siteDomain(domain) !== siteDomain(pageUrl.hostname))) {
+    score += 15;
+    reasons.push("Recognized information sent to a third-party domain: +15");
+  }
+
+  const cookieDomains = new Set(observedCookies.map((cookie) =>
+    cookie.domain.toLowerCase().replace(/^\.|\.$/g, "")));
+  const cookiePoints = Math.min(cookieDomains.size * 2, 10);
+  if (cookiePoints) {
+    score += cookiePoints;
+    reasons.push(`Third-party domains with observed cookies (${cookieDomains.size}): +${cookiePoints}`);
+  }
+  return { score: Math.min(score, 100), reasons };
+}
+
+function renderRisk(risk, status = "Checking...") {
+  elements.riskMeter.classList.toggle("is-hidden", !risk);
+  elements.riskReasons.replaceChildren();
+  if (!risk) {
+    elements.riskStatus.textContent = status;
+    elements.riskMeter.value = 0;
+    return;
+  }
+  const level = risk.score >= 60 ? "High" : risk.score >= 30 ? "Moderate" : "Low";
+  elements.riskMeter.value = risk.score;
+  elements.riskMeter.dataset.level = level.toLowerCase();
+  elements.riskStatus.textContent = `${level} · ${risk.score}/100`;
+  for (const reason of risk.reasons) {
+    const item = document.createElement("li");
+    item.textContent = reason;
+    elements.riskReasons.append(item);
+  }
+  if (!risk.reasons.length) {
+    elements.riskStatus.textContent += " · No scored signals observed";
   }
 }
 
@@ -184,6 +247,7 @@ async function getCollectedInformation(tabId)
 
 // Show the message used for browser pages that extensions cannot inspect.
 function showUnsupported() {
+  renderRisk(null, "Unavailable on this page.");
   elements.results.classList.add("is-hidden");
   elements.loading.classList.add("is-hidden");
   elements.error.classList.add("is-hidden");
@@ -193,6 +257,7 @@ function showUnsupported() {
 
 // Show a general error when cookie inspection fails.
 function showError() {
+  renderRisk(null, "Unavailable: Inspection failed.");
   elements.error.textContent = "Cookies could not be read for this page.";
   elements.error.classList.remove("is-hidden");
 }
@@ -351,13 +416,17 @@ async function inspectTab(version) {
 
   const firstPartyCookies = await getFirstPartyCookies(tab.id, pageUrl);
 
+  let cookieObservationError = false;
   const observedThirdPartyCookies = await chrome.runtime
     .sendMessage({
       type: "get-third-party-cookies",
       tabId: tab.id,
       tabUrl: pageUrl.href
     })
-    .catch(() => []);
+    .catch(() => {
+      cookieObservationError = true;
+      return [];
+    });
 
   const thirdPartyCookies = await splitThirdPartyCookies(
     tab.id,
@@ -369,6 +438,11 @@ async function inspectTab(version) {
   }
 
   elements.error.classList.add("is-hidden");
+  if (informationError || cookieObservationError) {
+    renderRisk(null, "Unavailable: Some inspection results could not be read.");
+  } else {
+    renderRisk(calculateRisk(collectedInformation, observedThirdPartyCookies, pageUrl));
+  }
   renderCollectedInformation(collectedInformation);
   if (informationError) {
     elements.informationStatus.textContent = "unable to retrieve information detection results.";
@@ -395,6 +469,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
   showLoading(tab.status === "loading");
   if (changeInfo.status === "loading" || changeInfo.url) {
+    renderRisk(null);
     elements.results.classList.add("is-hidden");
     elements.error.classList.add("is-hidden");
   }

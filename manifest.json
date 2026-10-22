@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "The Cookie Auditor",
-  "version": "0.1.1",
-  "description": "Lists first-party and third-party cookies found on the current page.",
+  "version": "0.2.0",
+  "description": "Privacy audit tool for inspecting cookie usage on web pages.",
   "permissions": [
     "cookies",
     "storage",

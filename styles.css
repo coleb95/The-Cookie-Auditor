@@ -51,6 +51,55 @@ section {
   margin-top: 20px;
 }
 
+#risk-status {
+  margin: 0 0 6px;
+  font-weight: bold;
+}
+
+.risk-meter {
+  display: block;
+  width: 100%;
+  height: 18px;
+  appearance: none;
+  --risk-color: #27803b;
+}
+
+.risk-meter[data-level="moderate"] {
+  --risk-color: #d66a00;
+}
+
+.risk-meter[data-level="high"] {
+  --risk-color: #c62828;
+}
+
+.risk-meter::-webkit-meter-bar {
+  background: #ffe1cc;
+  border: 1px solid #93430f;
+  border-radius: 9px;
+}
+
+.risk-meter::-webkit-meter-optimum-value,
+.risk-meter::-webkit-meter-suboptimum-value,
+.risk-meter::-webkit-meter-even-less-good-value {
+  background: var(--risk-color);
+  border-radius: 9px;
+}
+
+.risk-meter::-moz-meter-bar {
+  background: var(--risk-color);
+}
+
+.risk-reasons {
+  margin: 8px 0;
+  padding-left: 20px;
+  font-size: 0.8rem;
+}
+
+.risk-note {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+}
+
 .cookie-list {
   display: grid;
   gap: 7px;
