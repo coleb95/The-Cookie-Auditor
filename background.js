@@ -122,6 +122,15 @@ function identifyCollectedInformation(fieldname)
       "lat",
       "lng",
       "lon",
+      "geo",
+      "geolocation",
+      "country",
+      "country_code",
+      "region",
+      "city",
+      "postal_code",
+      "zip_code",
+      "zipcode",
     ],
 
     // IP Address Information Requested
@@ -133,6 +142,12 @@ function identifyCollectedInformation(fieldname)
       "client_ip",
       "user_ip",
       "remote_addr",
+      "clientip",
+      "userip",
+      "remote_ip",
+      "remote_address",
+      "ipv4",
+      "ipv6",
     ],
 
     //Personal Information Requested
@@ -142,6 +157,18 @@ function identifyCollectedInformation(fieldname)
       "phone",
       "firstname",
       "lastname",
+      "email_address",
+      "emailaddress",
+      "phone_number",
+      "mobile",
+      "first_name",
+      "last_name",
+      "full_name",
+      "fullname",
+      "username",
+      "date_of_birth",
+      "dob",
+      "street_address",
     ],
 
     //Browser History Request
@@ -152,6 +179,14 @@ function identifyCollectedInformation(fieldname)
       "history",
       "search",
       "event",
+      "page_location",
+      "page_referrer",
+      "referer",
+      "current_url",
+      "page_title",
+      "search_query",
+      "search_term",
+      "event_name",
     ],
 
     // Shopping Information Request
@@ -160,6 +195,26 @@ function identifyCollectedInformation(fieldname)
       "product_id",
       "cart",
       "purchase",
+      "item_id",
+      "product_name",
+      "sku",
+      "cart_id",
+      "order_id",
+      "transaction_id",
+      "checkout",
+      "order_total",
+    ],
+
+    // User, Device, And Session Identifiers
+    identifiers:
+    [
+      "user_id",
+      "userid",
+      "visitor_id",
+      "client_id",
+      "device_id",
+      "session_id",
+      "advertising_id",
     ],
   }
   const detected = [];

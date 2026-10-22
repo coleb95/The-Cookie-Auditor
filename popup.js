@@ -153,7 +153,8 @@ function renderCollectedInformation(result)
     ipAddress: "IP Address Information",
     personal: "Personal Information",
     browsing: "Browsing Activity",
-    shopping: "Shopping Information",
+    shopping: "Shopping Information/Activity",
+    identifiers: "User, Device, and Session Identifiers",
   };
 
   // List For Each Catigory Above
