@@ -132,6 +132,32 @@ section {
   color: #7f3d1b;
 }
 
+.cookie-rating {
+  display: block;
+  margin-top: 6px;
+  font-family: system-ui, sans-serif;
+  font-weight: bold;
+  color: #245c2c;
+}
+
+.cookie-rating[data-level="moderate"] { color: #733700; }
+.cookie-rating[data-level="high"] { color: #a01818; }
+.cookie-rating[data-level="unknown"] { color: #51483f; }
+
+.cookie-details, .cookie-findings, #cookie-summary {
+  font-family: system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-weight: normal;
+  color: #743512;
+}
+
+.cookie-details { margin: 6px 0; }
+.cookie-findings { margin: 6px 0 0; padding-left: 18px; }
+
+#collected-information-list {
+  margin-top: 8px;
+}
+
 #information-status {
   margin: 0;
 }

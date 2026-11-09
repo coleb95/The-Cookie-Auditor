@@ -10,6 +10,7 @@ const elements = {
   riskMeter: document.querySelector("#risk-meter"),
   riskStatus: document.querySelector("#risk-status"),
   riskReasons: document.querySelector("#risk-reasons"),
+  cookieSummary: document.querySelector("#cookie-summary"),
   firstPartyList: document.querySelector("#first-party-list"),
   storedThirdPartyList: document.querySelector("#stored-third-party-list"),
   unconfirmedThirdPartyList: document.querySelector("#unconfirmed-third-party-list"),
@@ -37,42 +38,23 @@ function asWebUrl(value) {
   }
 }
 
-// Count each category once, and limit the influence of cookie volume.
-function calculateRisk(result, observedCookies, pageUrl) {
-  const weights = {
-    personal: [25, "Potential personal information"],
-    location: [15, "Potential location information"],
-    identifiers: [15, "Potential user, device, or session identifiers"],
-    browsing: [10, "Potential browsing activity"],
-    shopping: [10, "Potential shopping activity"],
-    ipAddress: [5, "Potential IP address information"]
-  };
-  let score = 0;
+// Only cookie attributes determine risk; request observations remain informational.
+function calculateRisk(ratings = []) {
   const reasons = [];
-  for (const category of new Set(result?.informationTypes || [])) {
-    if (!Object.hasOwn(weights, category)) continue;
-    const [points, label] = weights[category];
-    score += points;
-    reasons.push(`${label}: +${points}`);
+  const assessed = ratings.filter((rating) => Number.isFinite(rating.score));
+  if (ratings.length && !assessed.length) return null;
+  // Use the highest cookie score so duplicates or many low-risk cookies cannot
+  // inflate the result or dilute a more concerning cookie.
+  const cookieScore = Math.max(0, ...assessed.map((rating) => rating.score));
+  if (assessed.length) {
+    reasons.push(`Highest cookie attribute score: ${cookieScore} points`);
+  } else {
+    reasons.push("No cookies available to rate; no attribute concerns observed.");
   }
-
-  // Use the same site-domain approximation as background.js.
-  const siteDomain = (hostname) => hostname.toLowerCase().replace(/^\.|\.$/g, "").split(".").slice(-2).join(".");
-  const receivers = result?.receivingDomains || (result?.receivingDomain ? [result.receivingDomain] : []);
-  if (score > 0 && receivers.some((domain) =>
-    typeof domain === "string" && siteDomain(domain) !== siteDomain(pageUrl.hostname))) {
-    score += 15;
-    reasons.push("Recognized information sent to a third-party domain: +15");
+  if (ratings.some((rating) => rating.missing.length)) {
+    reasons.push("Some cookie attributes are unavailable; those attributes were not scored.");
   }
-
-  const cookieDomains = new Set(observedCookies.map((cookie) =>
-    cookie.domain.toLowerCase().replace(/^\.|\.$/g, "")));
-  const cookiePoints = Math.min(cookieDomains.size * 2, 10);
-  if (cookiePoints) {
-    score += cookiePoints;
-    reasons.push(`Third-party domains with observed cookies (${cookieDomains.size}): +${cookiePoints}`);
-  }
-  return { score: Math.min(score, 100), reasons };
+  return { score: cookieScore, reasons };
 }
 
 function renderRisk(risk, status = "Checking...") {
@@ -83,10 +65,10 @@ function renderRisk(risk, status = "Checking...") {
     elements.riskMeter.value = 0;
     return;
   }
-  const level = risk.score >= 60 ? "High" : risk.score >= 30 ? "Moderate" : "Low";
+  const level = riskLevel(risk.score);
   elements.riskMeter.value = risk.score;
   elements.riskMeter.dataset.level = level.toLowerCase();
-  elements.riskStatus.textContent = `${level} · ${risk.score}/100`;
+  elements.riskStatus.textContent = `${level} - ${risk.score} points`;
   for (const reason of risk.reasons) {
     const item = document.createElement("li");
     item.textContent = reason;
@@ -138,14 +120,7 @@ function updatecCookieHighlights()
 
 // Remove duplicate cookies, sort them, and display them in the requested list.
 function renderCookies(list, cookies, emptyMessage = "No cookies found.") {
-  const uniqueCookies = new Map();
-  for (const cookie of cookies) {
-    const name = cookie.name || "(unnamed)";
-    const domain = cookie.domain || "unknown domain";
-    uniqueCookies.set(`${domain}\0${name}`, { name, domain });
-  }
-
-  const sortedCookies = [...uniqueCookies.values()].sort(
+  const sortedCookies = [...cookies].sort(
     (left, right) =>
       left.domain.localeCompare(right.domain) || left.name.localeCompare(right.name)
   );
@@ -162,7 +137,35 @@ function renderCookies(list, cookies, emptyMessage = "No cookies found.") {
     ...sortedCookies.map((cookie) => {
       const item = document.createElement("li");
       item.className = "cookie-item";
-      item.textContent = `${cookie.name} (${cookie.domain})`;
+      const title = document.createElement("strong");
+      title.textContent = `${cookie.name || "(unnamed)"} (${cookie.domain})`;
+      const rating = cookie.rating;
+      const badge = document.createElement("span");
+      badge.className = "cookie-rating";
+      badge.dataset.level = rating.level.toLowerCase();
+      badge.textContent = rating.score === null ? "Unknown risk" :
+        `${rating.level} risk - ${rating.score} points${rating.missing.length ? " (partial)" : ""}`;
+      const details = document.createElement("p");
+      details.className = "cookie-details";
+      const flag = (value) => typeof value === "boolean" ? (value ? "Yes" : "No") : "Unknown";
+      const sameSite = { strict: "Strict", lax: "Lax", no_restriction: "None", unspecified: "Not explicit" };
+      const expiry = cookie.session === true ? "Session" : Number.isFinite(cookie.expirationDate) &&
+        !Number.isNaN(new Date(cookie.expirationDate * 1000).getTime()) ?
+        new Date(cookie.expirationDate * 1000).toLocaleString() : "Unknown";
+      details.textContent = `Secure: ${flag(cookie.secure)} | HttpOnly: ${flag(cookie.httpOnly)} | SameSite: ${sameSite[cookie.sameSite] || "Unknown"}. Path: ${cookie.path ?? "Unknown"}. Scope: ${cookie.hostOnly === true ? "Host only" : cookie.hostOnly === false ? "Includes subdomains" : "Unknown"}. Expiration: ${expiry}.`;
+      if (cookie.partitionKey) details.textContent += ` Partition: ${cookie.partitionKey.topLevelSite || "Unknown"}.`;
+      const findings = document.createElement("ul");
+      findings.className = "cookie-findings";
+      const explanations = [...rating.reasons];
+      if (rating.score === null) explanations.push("Attributes could not be verified from browser storage; no attribute rating is assigned.");
+      else if (!explanations.length) explanations.push("No concerns found in the attributes checked. This does not guarantee safety.");
+      if (rating.missing.length && rating.score !== null) explanations.push(`Not assessed: ${rating.missing.join(", ")}.`);
+      for (const explanation of explanations) {
+        const finding = document.createElement("li");
+        finding.textContent = explanation;
+        findings.append(finding);
+      }
+      item.append(title, badge, details, findings);
 
       //Store What Cookie Should Be Highlighted
       item.dataset.cookieDomain = cookie.domain;
@@ -334,8 +337,8 @@ async function getFirstPartyCookies(tabId, pageUrl) {
     chrome.cookies.getAll({ ...storeFilter, url: pageUrl.href }),
     ...domains.map((domain) => chrome.cookies.getAll({ ...storeFilter, domain }))
   ]);
-  return results.flat().filter((cookie) =>
-    cookieMatchesDomain(cookie, hostname));
+  return uniqueCookies(results.flat().filter((cookie) =>
+    cookieMatchesDomain(cookie, hostname)));
 }
 
 // Get the current tab's partition key when the browser supports partitioned cookies.
@@ -378,10 +381,13 @@ async function splitThirdPartyCookies(tabId, observedCookies) {
       const results = await Promise.allSettled(
         filters.map((filter) => chrome.cookies.getAll(filter))
       );
+      if (results.every((result) => result.status === "rejected")) {
+        throw new Error("Third-party cookie attributes could not be read.");
+      }
       const storedCookies = results
         .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
         .filter((cookie) => cookieMatchesDomain(cookie, observedCookie.domain))
-        .map((cookie) => ({ name: cookie.name, domain: cookie.domain }));
+        .map(cookieMetadata);
 
       return storedCookies.length
         ? { stored: storedCookies, unconfirmed: [] }
@@ -390,8 +396,8 @@ async function splitThirdPartyCookies(tabId, observedCookies) {
   );
 
   return {
-    stored: classifications.flatMap((result) => result.stored),
-    unconfirmed: classifications.flatMap((result) => result.unconfirmed)
+    stored: uniqueCookies(classifications.flatMap((result) => result.stored)),
+    unconfirmed: uniqueCookies(classifications.flatMap((result) => result.unconfirmed))
   };
 }
 
@@ -449,24 +455,32 @@ async function inspectTab(version) {
   }
 
   elements.error.classList.add("is-hidden");
-  if (informationError || cookieObservationError) {
+  const nowSeconds = Date.now() / 1000;
+  const rate = (cookies) => cookies.map((cookie) => ({ ...cookie, rating: rateCookie(cookie, nowSeconds) }));
+  const ratedFirstParty = rate(firstPartyCookies);
+  const ratedStored = rate(thirdPartyCookies.stored);
+  const ratedUnconfirmed = rate(thirdPartyCookies.unconfirmed);
+  const ratings = [...ratedFirstParty, ...ratedStored, ...ratedUnconfirmed].map((cookie) => cookie.rating);
+  const counts = { Low: 0, Moderate: 0, High: 0, Unknown: 0 };
+  ratings.forEach((rating) => counts[rating.level]++);
+  if (cookieObservationError) {
     renderRisk(null, "Unavailable: Some inspection results could not be read.");
   } else {
-    renderRisk(calculateRisk(collectedInformation, observedThirdPartyCookies, pageUrl));
+    renderRisk(calculateRisk(ratings), "Unavailable: No cookie attributes could be assessed.");
   }
   renderCollectedInformation(collectedInformation);
   if (informationError) {
     elements.informationStatus.textContent = "unable to retrieve information detection results.";
   }
-  renderCookies(elements.firstPartyList, firstPartyCookies);
+  renderCookies(elements.firstPartyList, ratedFirstParty);
   renderCookies(
     elements.storedThirdPartyList,
-    thirdPartyCookies.stored,
+    ratedStored,
     "No confirmed third-party cookies found."
   );
   renderCookies(
     elements.unconfirmedThirdPartyList,
-    thirdPartyCookies.unconfirmed,
+    ratedUnconfirmed,
     "No unconfirmed third-party cookies found."
   );
   elements.results.classList.remove("is-hidden");

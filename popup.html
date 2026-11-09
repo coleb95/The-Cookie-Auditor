@@ -32,7 +32,7 @@
             low="30" high="60" optimum="0" value="0" aria-labelledby="risk-bar risk-status"
             aria-describedby="risk-note risk-reasons"></meter>
           <ul id="risk-reasons" class="risk-reasons"></ul>
-          <p id="risk-note" class="risk-note">Estimated privacy risk based on observed signals, not a probability of harm. Field names suggest possible information. Their contents are not verified.</p>
+          <p id="risk-note" class="risk-note">Scoring is between 0 and 100 points. The overall score is the highest individual cookie attribute score. This estimate is not a probability of harm, or proof of tracking.</p>
        </section>
 
       <!-- Code for identify and labeling cookie threat level -->
@@ -40,6 +40,7 @@
           <h2 id="collected-information-title">
             Potentially Collected Information
           </h2>
+          <p class="risk-note">This suggests possible information, but its contents are not verified and do not prove collection or tracking.</p>
           <ul id="collected-information-list" class="cookie-list"></ul>
           <p id="information-status">
             Checking for transmitted information...
@@ -47,6 +48,7 @@
         </section>
 
       <div id="results" class="is-hidden">
+        <p id="cookie-summary" role="status"></p>
         <!-- First-party Cookies -->
         <section aria-labelledby="first-party-title">
           <h2 id="first-party-title">First-party cookies</h2>
@@ -65,6 +67,7 @@
 
       </div>
     </main>
+    <script src="cookie-risk.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>
