@@ -318,14 +318,24 @@ async function getCookieStoreFilter(tabId) {
   return store ? { storeId: store.id } : {};
 }
 
-// Get cookies that belong to the current page's URL or domain.
+// Get cookies for the full hostname, including parent-domain cookies at other paths.
 async function getFirstPartyCookies(tabId, pageUrl) {
   const storeFilter = await getCookieStoreFilter(tabId);
-  const [urlCookies, domainCookies] = await Promise.all([
+  const hostname = pageUrl.hostname.toLowerCase();
+  // Include every ancestor without assuming hosts have two or three labels.
+  const domains = [hostname];
+  if (!hostname.startsWith("[") && !/^\d+(\.\d+){3}$/.test(hostname)) {
+    for (let dot = hostname.indexOf("."); dot !== -1; dot = hostname.indexOf(".", dot + 1)) {
+      const parent = hostname.slice(dot + 1);
+      if (parent.includes(".")) domains.push(parent);
+    }
+  }
+  const results = await Promise.all([
     chrome.cookies.getAll({ ...storeFilter, url: pageUrl.href }),
-    chrome.cookies.getAll({ ...storeFilter, domain: pageUrl.hostname })
+    ...domains.map((domain) => chrome.cookies.getAll({ ...storeFilter, domain }))
   ]);
-  return [...urlCookies, ...domainCookies];
+  return results.flat().filter((cookie) =>
+    cookieMatchesDomain(cookie, hostname));
 }
 
 // Get the current tab's partition key when the browser supports partitioned cookies.
@@ -347,7 +357,8 @@ async function getCurrentPartitionKey(tabId) {
 function cookieMatchesDomain(cookie, observedDomain) {
   const cookieDomain = cookie.domain.toLowerCase().replace(/^\./, "");
   const requestDomain = observedDomain.toLowerCase();
-  return requestDomain === cookieDomain || requestDomain.endsWith(`.${cookieDomain}`);
+  return requestDomain === cookieDomain ||
+    (!cookie.hostOnly && requestDomain.endsWith(`.${cookieDomain}`));
 }
 
 // Separate observed third-party cookies into stored cookies and cookies not found in storage.
