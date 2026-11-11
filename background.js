@@ -347,15 +347,16 @@ chrome.webRequest.onHeadersReceived.addListener(
   ["responseHeaders", "extraHeaders"]
 );
 
-// Remove Saved Tracking Data After Its Tab Is Closed
+ // Remove saved observations when their browser tab is closed.
 chrome.tabs.onRemoved.addListener((tabId) => {
-  void chrome.tabs.onRemoved.addListener((tabId)=>
-  {
-    void chrome.storage.session.remove([
+  void queue(tabId, () =>
+    chrome.storage.session.remove([
       storageKey(tabId),
       `detection_${tabId}`
-    ]);
-  })
+    ])
+  ).catch((error) => {
+    console.error("Failed to clean up tab data:", error);
+  });
 });
 
 // Return the active tab's recorded third-party cookies when the popup asks for them.

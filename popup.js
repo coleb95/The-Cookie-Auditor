@@ -96,7 +96,7 @@ function matchesDetectedReceiver(cookieDomain)
       return false;
     }
     const receiver = receivingDomain.toLocaleLowerCase().replace(/^\./,"");
-    return receivingDomain == domain || receivingDomain.endsWith(`.${domain}`);
+    return receiver === domain || receiver.endsWith(`.${domain}`);
   });
 }
 
@@ -233,9 +233,12 @@ function renderCollectedInformation(result)
   list.replaceChildren(...items);
 
   //Display All Domain Reciving Information
-  const domains = result.receivingDomains?.lenth?result.receivingDomains:[result.receivingDomain || "Unknown"];
+  const domains = result.receivingDomains?.length
+    ? result.receivingDomains
+    : [result.receivingDomain || "Unknown"];
+
   status.textContent = `Receiving Domains: ${domains.join(", ")}`;
-}
+  }
 
 //Retrieve Detected Information Stored
 async function getCollectedInformation(tabId)
@@ -463,6 +466,22 @@ async function inspectTab(version) {
   const ratings = [...ratedFirstParty, ...ratedStored, ...ratedUnconfirmed].map((cookie) => cookie.rating);
   const counts = { Low: 0, Moderate: 0, High: 0, Unknown: 0 };
   ratings.forEach((rating) => counts[rating.level]++);
+
+  const totalEntries = ratings.length;
+
+  elements.cookieSummary.textContent =
+    `Displayed entries: ${totalEntries} ` +
+    `(First-party: ${ratedFirstParty.length}, ` +
+    `Confirmed third-party: ${ratedStored.length}, ` +
+    `Unconfirmed: ${ratedUnconfirmed.length}). ` +
+    `Ratings: Low ${counts.Low}, ` +
+    `Moderate ${counts.Moderate}, ` +
+    `High ${counts.High}, ` +
+    `Unknown ${counts.Unknown}.` +
+    (cookieObservationError
+      ? " Third-party observations unavailable; counts may be incomplete."
+      : "");
+
   if (cookieObservationError) {
     renderRisk(null, "Unavailable: Some inspection results could not be read.");
   } else {
